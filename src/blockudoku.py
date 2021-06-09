@@ -291,6 +291,9 @@ def checkSudoku(gs):
             
     return multiplier
 
+def calculatePoints(multiplier):
+    pass
+
 
 def main():
     pygame.init()
@@ -316,7 +319,6 @@ def main():
     while running:
         for event in pygame.event.get():
             if event.type==QUIT:
-                print(gs.pcs)
                 pygame.quit()
                 sys.exit()
                 
