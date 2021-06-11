@@ -14,6 +14,7 @@ BLUE=(0,0,255)
 RED = (255, 0, 0)
 BLACK = (0,0,0)
 
+pausetimerevent = pygame.USEREVENT + 1
 # can rotate all pieces with np.rot90(m, k=1)
 
 # m 	Array of two or more dimensions. 
@@ -80,6 +81,7 @@ class GameState():
         self.pcs = pr
         self.lose = False
         self.checkLost = True
+        self.points = 0
     
     def placed3(self):
         # create 3 new pieces
@@ -159,6 +161,7 @@ class Piece(pygame.sprite.Sprite):
             # if pass through check, place
             self.placed = True
             self.gs.checkLost = True
+            self.gs.points += self.piece.sum()
             
             for p in self.gs.pcs:
                 if p.placed:
@@ -294,11 +297,13 @@ def checkSudoku(gs):
             
     if clear_r.sum() + clear_c.sum() + clear_b.sum() > 0:
         gs.checkLost = False
-    
-    return multiplier
 
-def calculatePoints(multiplier):
-    pass
+    num_blocks = temp_board.sum() - gs.board.sum()
+
+    return multiplier, num_blocks
+
+def calculatePoints(multiplier, num_blocks):
+    return num_blocks*multiplier
 
 def checkLostGame(gs):
     # iterate through every location on board that is empty and try to place each piece
@@ -311,11 +316,11 @@ def checkLostGame(gs):
                     gs.lost = False
                     gs.lost = attemptPlace(row_idx, col_idx, piece.piece,gs)
                     if not gs.lost:
-                        print('check lost game result: ', gs.lost,'\n')
+                        #print('check lost game result: ', gs.lost,'\n')
                         return
-                    print('invalid placement at: ', row_idx,col_idx,'\n',piece.piece,'\n')
+                    #print('invalid placement at: ', row_idx,col_idx,'\n',piece.piece,'\n')
 
-    print('check lost game result: ', gs.lost,'\n')
+    #print('check lost game result: ', gs.lost,'\n')
 
 
 def attemptPlace(row_idx, col_idx, piece,gs):
@@ -328,9 +333,9 @@ def attemptPlace(row_idx, col_idx, piece,gs):
                 valid = checkPiece(gs,dcy,dcx,piece,row_idx,col_idx)
                 if valid:
                     # can place, gs.lose = False
-                    print('valid placement at: ', row_idx, col_idx,'\n', piece,'\n','drag center: ',dcy,dcx,'\n')
+                    #print('valid placement at: ', row_idx, col_idx,'\n', piece,'\n','drag center: ',dcy,dcx,'\n')
                     return False
-                print('invalid placement at: ', row_idx, col_idx,'\n', piece,'\n','drag center: ',dcy,dcx,'\n')
+                #print('invalid placement at: ', row_idx, col_idx,'\n', piece,'\n','drag center: ',dcy,dcx,'\n')
     return True
 
 def checkPiece(gs, dcy, dcx, piece, row_idx, col_idx):
@@ -374,7 +379,8 @@ def main():
 
     gs = GameState(DISPLAY, all_sprites)
     running = True
-    points = 0
+    lose_message_time = 2000
+    high_score = 0
     while running:
         for event in pygame.event.get():
             if event.type==QUIT:
@@ -384,6 +390,8 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_c:
                     checkLostGame(gs)
+                if event.key == pygame.K_q:
+                    gs.lost = True
 
             for o in gs.pcs:
                 o.handle_event(event)
@@ -393,46 +401,52 @@ def main():
             gs.checkLost = True
         
         
-        multiplier = checkSudoku(gs)
+        multiplier, num_blocks = checkSudoku(gs)
         
         if gs.checkLost:
             checkLostGame(gs)
             gs.checkLost = False
-        
-       
-        
-        
-        
         
         DISPLAY.fill(WHITE)
         drawGameState(DISPLAY,gs)
         all_sprites.update()
         all_sprites.draw(DISPLAY)
         
-        #points = calculatePoints(multiplier)
-        score = "Score: " + str(points)
+        gs.points += calculatePoints(multiplier, num_blocks)
+        if gs.points > high_score:
+            high_score = gs.points
+        hscore = "High Score: " + str(high_score)
+        score = "Score: " + str(gs.points)
         
         # create a text suface object, 
         # on which text is drawn on it. 
         text = font.render(score, True, BLACK) 
+        htext = font.render(hscore, True, BLACK)
       
         # create a rectangular object for the 
         # text surface object 
         textRect = text.get_rect()  
-      
+        htextRect = htext.get_rect()
         # set the center of the rectangular object. 
         textRect.center = (288, 676)
+        htextRect.center = (288, 626)
         DISPLAY.blit(text, textRect)
+        DISPLAY.blit(htext, htextRect)
         
         if gs.lost:
-            print('lost')
+            #print('lost')
             losetext = losefont.render('YOU LOST!!!!', True, BLACK) 
-            losetextRect = losetext.get_rect()  
-            losetextRect.center = (576, 676)
-            DISPLAY.blit(losetext, losetextRect)
+            temp_surface = pygame.Surface(losetext.get_size())
+            temp_surface.fill((192, 192, 192))
+            temp_surface.blit(losetext, (0, 0))
+            DISPLAY.blit(temp_surface,(148,300))
             # prompt restart
+            while lose_message_time > 0:
+                lose_message_time -=1
+                pygame.display.update()
             all_sprites = pygame.sprite.Group()
             gs = GameState(DISPLAY, all_sprites)
+            lose_message_time =2000
 
         pygame.display.update()
 
