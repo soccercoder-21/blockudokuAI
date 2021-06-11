@@ -79,6 +79,7 @@ class GameState():
         # piece is object with a piece and a flag if placed
         self.pcs = pr
         self.lose = False
+        self.checkLost = True
     
     def placed3(self):
         # create 3 new pieces
@@ -105,7 +106,8 @@ class Piece(pygame.sprite.Sprite):
         self.placed = placed
         self.y_off = y_off
         self.gs = gs
-        r,c = self.piece.shape
+        self.shape = self.piece.shape
+        r,c = self.shape
         
         self.image = pygame.Surface((c*(SQ_SIZE-2),r*(SQ_SIZE-2)),pygame.SRCALPHA, 32)
         self.image.convert_alpha()
@@ -156,6 +158,7 @@ class Piece(pygame.sprite.Sprite):
             
             # if pass through check, place
             self.placed = True
+            self.gs.checkLost = True
             
             for p in self.gs.pcs:
                 if p.placed:
@@ -289,10 +292,66 @@ def checkSudoku(gs):
         if clear_b[i//3][i%3]==1:
             gs.board[3*(i//3):3*(i//3)+3,3*(i%3):3*(i%3)+3] = np.zeros((3,3))
             
+    if clear_r.sum() + clear_c.sum() + clear_b.sum() > 0:
+        gs.checkLost = False
+    
     return multiplier
 
 def calculatePoints(multiplier):
     pass
+
+def checkLostGame(gs):
+    # iterate through every location on board that is empty and try to place each piece
+    row_idx = 0
+    col_idx = 0
+    for row_idx, row in enumerate(gs.board):
+        for col_idx, block in enumerate(row):
+            if block == 0:
+                for piece in gs.pcs:
+                    gs.lost = False
+                    gs.lost = attemptPlace(row_idx, col_idx, piece.piece,gs)
+                    if not gs.lost:
+                        print('check lost game result: ', gs.lost,'\n')
+                        return
+                    print('invalid placement at: ', row_idx,col_idx,'\n',piece.piece,'\n')
+
+    print('check lost game result: ', gs.lost,'\n')
+
+
+def attemptPlace(row_idx, col_idx, piece,gs):
+    # iterate through each possible drag center of piece, then check: if using that drag center, can I place the piece?
+    r,c = piece.shape
+    for dcy in range(r):
+        for dcx in range(c):
+            if piece[dcy][dcx] == 1:
+                # for each drag center
+                valid = checkPiece(gs,dcy,dcx,piece,row_idx,col_idx)
+                if valid:
+                    # can place, gs.lose = False
+                    print('valid placement at: ', row_idx, col_idx,'\n', piece,'\n','drag center: ',dcy,dcx,'\n')
+                    return False
+                print('invalid placement at: ', row_idx, col_idx,'\n', piece,'\n','drag center: ',dcy,dcx,'\n')
+    return True
+
+def checkPiece(gs, dcy, dcx, piece, row_idx, col_idx):
+    # given a drag center and a location on the board, does piece fit?
+    r,c = piece.shape
+    for y in range(r):
+        for x in range(c):
+            if piece[y][x] == 1:
+                # check to see if the rest of piece is valid
+                block_x = x-dcx
+                block_y = y-dcy
+                if (block_y + row_idx) < 0 or (block_y + row_idx) > 8:
+                    # cant place
+                    return False
+                if (block_x + col_idx) < 0 or (block_x + col_idx) > 8:
+                    # cant place
+                    return False
+                if gs.board[block_y + row_idx][block_x + col_idx] == 1:
+                    # cant place
+                    return False
+    return True
 
 
 def main():
@@ -308,27 +367,42 @@ def main():
     # 1st parameter is the font file 
     # which is present in pygame. 
     # 2nd parameter is size of the font 
-    font = pygame.font.Font('freesansbold.ttf', 20) 
+    font = pygame.font.Font('freesansbold.ttf', 20)
+    losefont = pygame.font.Font('freesansbold.ttf', 80)
     global all_sprites 
     all_sprites = pygame.sprite.Group()
 
     gs = GameState(DISPLAY, all_sprites)
     running = True
-    
-
+    points = 0
     while running:
         for event in pygame.event.get():
             if event.type==QUIT:
                 pygame.quit()
                 sys.exit()
-                
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_c:
+                    checkLostGame(gs)
+
             for o in gs.pcs:
                 o.handle_event(event)
-        
+
         if not gs.pcs:
             gs.placed3()
+            gs.checkLost = True
+        
         
         multiplier = checkSudoku(gs)
+        
+        if gs.checkLost:
+            checkLostGame(gs)
+            gs.checkLost = False
+        
+       
+        
+        
+        
         
         DISPLAY.fill(WHITE)
         drawGameState(DISPLAY,gs)
@@ -336,7 +410,7 @@ def main():
         all_sprites.draw(DISPLAY)
         
         #points = calculatePoints(multiplier)
-        score = "Score: " + str(300)
+        score = "Score: " + str(points)
         
         # create a text suface object, 
         # on which text is drawn on it. 
@@ -349,8 +423,18 @@ def main():
         # set the center of the rectangular object. 
         textRect.center = (288, 676)
         DISPLAY.blit(text, textRect)
-        pygame.display.update()
+        
+        if gs.lost:
+            print('lost')
+            losetext = losefont.render('YOU LOST!!!!', True, BLACK) 
+            losetextRect = losetext.get_rect()  
+            losetextRect.center = (576, 676)
+            DISPLAY.blit(losetext, losetextRect)
+            # prompt restart
+            all_sprites = pygame.sprite.Group()
+            gs = GameState(DISPLAY, all_sprites)
 
+        pygame.display.update()
 
 if __name__ == '__main__':
     main()
