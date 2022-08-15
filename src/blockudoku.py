@@ -1,5 +1,10 @@
 import numpy as np
-import pygame, sys
+import os
+try:
+    import pygame, sys
+except:
+    os.system('pip install pygame')
+    import pygame, sys
 from pygame.locals import *
 
 WIDTH = HEIGHT = 576
@@ -56,8 +61,10 @@ pieces = [
                   [0, 0, 1]]), # 10
     
         np.array([[1, 0],
-                  [0, 1]]) # 11
-    
+                  [0, 1]]), # 11
+
+        np.array([[1]]) #12
+
     ]
 
 class GameState():
@@ -71,7 +78,7 @@ class GameState():
         y_off = 0
         # make piece orientation random
         for i in p:
-            rotated = np.rot90(pieces[int(round(i*11))], k=int(round(np.random.rand()*11)))
+            rotated = np.rot90(pieces[int(round(i*(len(pieces)-1)))], k=int(round(np.random.rand()*5)))
             piece_object = Piece(piece=rotated,clicked=0,placed = 0, y_off = y_off, gs = self)
             all_sprites.add(piece_object)
             pr.append(piece_object)
@@ -91,7 +98,7 @@ class GameState():
         y_off = 0
         # make piece orientation random
         for i in p:
-            rotated = np.rot90(pieces[int(round(i*11))], k=int(round(np.random.rand()*11)))
+            rotated = np.rot90(pieces[int(round(i*(len(pieces)-1)))], k=int(round(np.random.rand()*5)))
             piece_object = Piece(piece=rotated,clicked=0,placed = 0, y_off = y_off, gs = self)
             all_sprites.add(piece_object)
             pr.append(piece_object)
@@ -379,7 +386,7 @@ def main():
 
     gs = GameState(DISPLAY, all_sprites)
     running = True
-    lose_message_time = 2000
+    lose_message_time = 10
     high_score = 0
     while running:
         for event in pygame.event.get():
@@ -446,9 +453,11 @@ def main():
                 pygame.display.update()
             all_sprites = pygame.sprite.Group()
             gs = GameState(DISPLAY, all_sprites)
-            lose_message_time =2000
+            lose_message_time =10
 
         pygame.display.update()
 
 if __name__ == '__main__':
+    #TODO: add file to save high scores and create executable for distribution
+    #TODO: think about how to create an AI to beat the game
     main()
