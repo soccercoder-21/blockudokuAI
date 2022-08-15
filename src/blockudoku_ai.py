@@ -493,7 +493,7 @@ def HS_config(score):
         f.write(str(score))
         f.close()
                 
-def main_ai():
+def main_brute_force():
     try:
         f = open("score.config", "r")
         HIGH_SCORE = float(f.read())
@@ -553,4 +553,4 @@ def main_ai():
             clear_output(wait=True)
 
 if __name__ == '__main__':
-    main_ai()
+    main_brute_force()
