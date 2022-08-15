@@ -1,2 +1,4 @@
 score.config
 src/blockudoku_text.ipynb
+src/__pycache__
+src/.ipynb_checkpoints
